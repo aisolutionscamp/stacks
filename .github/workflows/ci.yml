@@ -42,7 +42,14 @@ jobs:
 
       - name: Compose up and smoke test
         run: |
-          docker compose up -d --build --wait --wait-timeout 600
+          # Start everything (one-shot jobs included), then wait only for the
+          # long-running services with a healthcheck: `up --wait` treats a
+          # finished one-shot job (exit 0) as a failure. The smoke test checks
+          # what the one-shot jobs did.
+          docker compose up -d --build
+          healthy=$(docker compose config --format json | jq -r '.services | to_entries[] | select(.value.healthcheck) | .key')
+          # shellcheck disable=SC2086 # one service name per word
+          docker compose up -d --wait --wait-timeout 600 $healthy
           ./smoke-test.sh
 
       - name: Logs on failure

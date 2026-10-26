@@ -100,7 +100,7 @@ variable "token_hash_secret" {
 locals {
   flowise_image  = "flowiseai/flowise:3.1.4"
   ollama_image   = "ollama/ollama:0.40.11"
-  postgres_image = "postgres:17.11-alpine"
+  postgres_image = "postgres:18.4-alpine"
 
   setup_script = <<-EOT
     const e = process.env;
@@ -168,7 +168,7 @@ resource "docker_container" "postgres" {
 
   volumes {
     volume_name    = docker_volume.postgres_data.name
-    container_path = "/var/lib/postgresql/data"
+    container_path = "/var/lib/postgresql"
   }
 
   healthcheck {

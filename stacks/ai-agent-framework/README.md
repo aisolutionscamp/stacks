@@ -7,7 +7,7 @@ A self-hosted visual builder for LLM agents. You build chatflows and agentflows 
 | Service | Image | Port | Purpose |
 |---|---|---|---|
 | `flowise` | `flowiseai/flowise:3.1.4` | `127.0.0.1:3000` (`FLOWISE_PORT`) | Web UI, REST API (`/api/v1/...`), flow execution |
-| `postgres` | `postgres:17.11-alpine` | not published | Flowise database (flows, users, API keys, chat history, encrypted credentials) |
+| `postgres` | `postgres:18.4-alpine` | not published | Flowise database (flows, users, API keys, chat history, encrypted credentials) |
 | `ollama` | `ollama/ollama:0.40.11` | `127.0.0.1:11434` (`OLLAMA_PORT`) | Local model server, reachable from Flowise as `http://ollama:11434` |
 | `ollama-pull` | `ollama/ollama:0.40.11` | none | One-shot: pulls `OLLAMA_MODEL` (default `llama3.2:3b`), then exits |
 | `flowise-setup` | `flowiseai/flowise:3.1.4` | none | One-shot: creates the owner account from `FLOWISE_ADMIN_EMAIL` / `FLOWISE_ADMIN_PASSWORD`, then exits |

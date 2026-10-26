@@ -207,13 +207,13 @@ locals {
     name: ai-agent-framework
     services:
       postgres:
-        image: postgres:17.11-alpine
+        image: postgres:18.4-alpine
         restart: unless-stopped
         environment:
           POSTGRES_DB: flowise
           POSTGRES_USER: flowise
           POSTGRES_PASSWORD: $${POSTGRES_PASSWORD:?missing}
-        volumes: [postgres_data:/var/lib/postgresql/data]
+        volumes: [postgres_data:/var/lib/postgresql]
         healthcheck:
           test: ["CMD-SHELL", "pg_isready -U flowise -d flowise"]
           interval: 5s
