@@ -1,0 +1,128 @@
+# AI Agent Framework: Flowise (visual agent builder) + Ollama (local models) + PostgreSQL.
+# Copy .env.example to .env, fill in the secrets, then: docker compose up -d --wait
+
+name: ai-agent-framework
+
+services:
+  postgres:
+    image: postgres:17.11-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: flowise
+      POSTGRES_USER: flowise
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowise -d flowise"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # No published port: only Flowise talks to the database.
+
+  ollama:
+    image: ollama/ollama:0.40.11
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # One-shot: downloads OLLAMA_MODEL into the ollama volume (skipped quickly if present).
+  ollama-pull:
+    image: ollama/ollama:0.40.11
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-llama3.2:3b}"]
+
+  flowise:
+    image: flowiseai/flowise:3.1.4
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      PORT: "3000"
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      # Database
+      DATABASE_TYPE: postgres
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: flowise
+      DATABASE_USER: flowise
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Encryption key for stored credentials (API keys of model providers, tools, ...)
+      FLOWISE_SECRETKEY_OVERWRITE: ${FLOWISE_SECRETKEY_OVERWRITE:?set FLOWISE_SECRETKEY_OVERWRITE in .env}
+      # Login sessions and tokens
+      JWT_AUTH_TOKEN_SECRET: ${JWT_AUTH_TOKEN_SECRET:?set JWT_AUTH_TOKEN_SECRET in .env}
+      JWT_REFRESH_TOKEN_SECRET: ${JWT_REFRESH_TOKEN_SECRET:?set JWT_REFRESH_TOKEN_SECRET in .env}
+      EXPRESS_SESSION_SECRET: ${EXPRESS_SESSION_SECRET:?set EXPRESS_SESSION_SECRET in .env}
+      TOKEN_HASH_SECRET: ${TOKEN_HASH_SECRET:?set TOKEN_HASH_SECRET in .env}
+      JWT_ISSUER: Flowise
+      JWT_AUDIENCE: Flowise
+      # Files and logs live in the flowise_data volume
+      SECRETKEY_PATH: /home/node/.flowise
+      BLOB_STORAGE_PATH: /home/node/.flowise/storage
+      LOG_PATH: /home/node/.flowise/logs
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DISABLE_FLOWISE_TELEMETRY: ${DISABLE_FLOWISE_TELEMETRY:-true}
+    volumes:
+      # Mounted at the home directory of the image's non-root user (uid 1000) so the
+      # volume is writable; Flowise keeps its files in /home/node/.flowise.
+      - flowise_data:/home/node
+    ports:
+      - "127.0.0.1:${FLOWISE_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/v1/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # One-shot: creates the Flowise owner account from FLOWISE_ADMIN_EMAIL / FLOWISE_ADMIN_PASSWORD,
+  # so the instance is never left open for the first visitor to claim. Does nothing if an
+  # account already exists.
+  flowise-setup:
+    image: flowiseai/flowise:3.1.4
+    restart: "no"
+    depends_on:
+      flowise:
+        condition: service_healthy
+    environment:
+      FLOWISE_ADMIN_NAME: ${FLOWISE_ADMIN_NAME:-Admin}
+      FLOWISE_ADMIN_EMAIL: ${FLOWISE_ADMIN_EMAIL:?set FLOWISE_ADMIN_EMAIL in .env}
+      FLOWISE_ADMIN_PASSWORD: ${FLOWISE_ADMIN_PASSWORD:?set FLOWISE_ADMIN_PASSWORD in .env}
+    entrypoint:
+      - node
+      - -e
+      - |
+        const e = process.env;
+        const body = { user: { name: e.FLOWISE_ADMIN_NAME, email: e.FLOWISE_ADMIN_EMAIL, credential: e.FLOWISE_ADMIN_PASSWORD } };
+        fetch("http://flowise:3000/api/v1/account/register", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+        }).then(async (r) => {
+          const text = await r.text();
+          if (r.ok) return console.log("Created Flowise owner account " + e.FLOWISE_ADMIN_EMAIL);
+          if (text.includes("only have one organization")) return console.log("Owner account already exists, nothing to do");
+          console.error("Account setup failed (HTTP " + r.status + "): " + text);
+          process.exit(1);
+        }).catch((err) => { console.error(err); process.exit(1); });
+
+volumes:
+  postgres_data:
+  ollama_data:
+  flowise_data:

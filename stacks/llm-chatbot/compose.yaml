@@ -1,0 +1,80 @@
+# LLM Chatbot: Open WebUI (chat interface) on top of Ollama (local model server).
+#
+#   cp .env.example .env    # then set WEBUI_SECRET_KEY
+#   docker compose up -d --wait
+#
+# NVIDIA GPU: docker compose -f compose.yaml -f compose.gpu.yaml up -d --wait
+
+name: llm-chatbot
+
+services:
+  ollama:
+    image: ollama/ollama:${OLLAMA_VERSION:-0.40.11}
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
+      OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-1}
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      # Ollama API has no authentication. Keep it on 127.0.0.1.
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    healthcheck:
+      # "ollama list" talks to the local server, so it only succeeds once the API is up.
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # One-shot job: pulls DEFAULT_MODEL into the ollama volume, then exits.
+  # Leave DEFAULT_MODEL empty to skip it. Already-present models are only checked, not downloaded again.
+  model-pull:
+    image: ollama/ollama:${OLLAMA_VERSION:-0.40.11}
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-llama3.2}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -z "$$DEFAULT_MODEL" ]; then echo "DEFAULT_MODEL is empty, nothing to pull"; exit 0; fi
+        echo "Pulling $$DEFAULT_MODEL"
+        ollama pull "$$DEFAULT_MODEL"
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:${OPEN_WEBUI_VERSION:-0.12.4}
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?set WEBUI_SECRET_KEY in .env (openssl rand -hex 32)}
+      WEBUI_NAME: ${WEBUI_NAME:-LLM Chatbot}
+      WEBUI_URL: ${WEBUI_URL:-http://localhost:${WEBUI_PORT:-3000}}
+      # The first account created becomes the admin. Set to false after that.
+      ENABLE_SIGNUP: ${ENABLE_SIGNUP:-true}
+      DEFAULT_USER_ROLE: ${DEFAULT_USER_ROLE:-pending}
+      DEFAULT_MODELS: ${DEFAULT_MODEL:-llama3.2}
+      # Only local models through Ollama. Set to true to add OpenAI-compatible APIs in the admin panel.
+      ENABLE_OPENAI_API: ${ENABLE_OPENAI_API:-false}
+    volumes:
+      - open-webui-data:/app/backend/data
+    ports:
+      - "127.0.0.1:${WEBUI_PORT:-3000}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      # First start downloads the default embedding model for document chat and runs DB migrations.
+      start_period: 120s
+
+volumes:
+  ollama-data:
+  open-webui-data:

@@ -1,0 +1,91 @@
+# RAG Pipeline: Qdrant (vector store) + Ollama (embeddings and chat model) + rag-api.
+# Copy .env.example to .env, set QDRANT_API_KEY (and RAG_API_KEY), then:
+#   docker compose up -d --build --wait
+# GPU (NVIDIA): docker compose -f compose.yaml -f compose.gpu.yaml up -d --build --wait
+
+name: rag-pipeline
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?set QDRANT_API_KEY in .env}
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      # REST API and web UI (http://localhost:6333/dashboard), needs the API key.
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
+    healthcheck:
+      # The image has no curl; /readyz does not need the API key.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333 && printf 'GET /readyz HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  ollama:
+    image: ollama/ollama:0.40.11
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      # Ollama has no authentication: keep it on localhost.
+      - "127.0.0.1:${OLLAMA_PORT:-11434}:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  rag-api:
+    # Built from ./app; the same code is published as this image.
+    build: ./app
+    image: ghcr.io/aisolutionscamp/rag-api:${RAG_API_VERSION:-1.0.0}
+    restart: unless-stopped
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY:?set QDRANT_API_KEY in .env}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-documents}
+      RAG_API_KEY: ${RAG_API_KEY:-}
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text:v1.5}
+      CHAT_MODEL: ${CHAT_MODEL:-llama3.2:3b}
+      PULL_MODELS: ${PULL_MODELS:-true}
+      CHUNK_SIZE: ${CHUNK_SIZE:-1000}
+      CHUNK_OVERLAP: ${CHUNK_OVERLAP:-200}
+      TOP_K: ${TOP_K:-4}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-300}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.1}
+    ports:
+      - "${RAG_API_BIND:-127.0.0.1}:${RAG_API_PORT:-8000}:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # Healthy once both models are in Ollama and the Qdrant collection exists.
+      # The first start downloads the models, hence the long start period.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30m
+      start_interval: 5s
+
+volumes:
+  qdrant_data:
+  ollama_data:

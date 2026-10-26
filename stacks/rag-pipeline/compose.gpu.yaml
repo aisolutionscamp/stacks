@@ -1,0 +1,12 @@
+# Optional override: run Ollama on NVIDIA GPUs.
+# Needs the NVIDIA driver and the NVIDIA Container Toolkit on the host.
+#   docker compose -f compose.yaml -f compose.gpu.yaml up -d --build --wait
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

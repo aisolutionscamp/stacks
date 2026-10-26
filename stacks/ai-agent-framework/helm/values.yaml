@@ -1,0 +1,92 @@
+# Values for the HelmForge Flowise chart (helmforge/flowise 1.3.13).
+# Secrets are NOT in this file: install.sh creates the Kubernetes secrets
+# "flowise-auth" and "flowise-postgresql-auth" before installing.
+# Ollama runs as a separate release with ollama-values.yaml.
+
+image:
+  repository: docker.io/flowiseai/flowise
+  tag: "3.1.4"
+
+flowise:
+  # Set to your public URL (https://...) when you expose Flowise through an ingress.
+  appUrl: ""
+  logLevel: info
+  disableTelemetry: true
+  extraEnv:
+    - name: SECRETKEY_PATH
+      value: /home/node/.flowise
+    - name: LOG_PATH
+      value: /home/node/.flowise/logs
+
+auth:
+  # Keys: encryption-key, jwt-auth-token-secret, jwt-refresh-token-secret,
+  # express-session-secret, token-hash-secret (created by install.sh).
+  existingSecret: flowise-auth
+  # Set to true once Flowise is served over HTTPS.
+  secureCookies: false
+
+# Bundled PostgreSQL (official postgres image) instead of SQLite.
+postgresql:
+  enabled: true
+  auth:
+    database: flowise
+    username: flowise
+    # Keys: postgres-password, user-password, replication-password (created by install.sh).
+    # The name must be "<release>-postgresql-auth"; the Flowise chart reads the password from it.
+    existingSecret: flowise-postgresql-auth
+  standalone:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+storage:
+  type: local
+  local:
+    path: /home/node/.flowise/storage
+
+# Flowise 3.1.4 runs as the non-root user "node" (uid 1000) with its data in
+# /home/node/.flowise. The chart's built-in volume is mounted at /root/.flowise,
+# so it is disabled and an own PVC is mounted at the right path instead.
+persistence:
+  enabled: false
+extraManifests:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: flowise-home
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+extraVolumes:
+  - name: flowise-home
+    persistentVolumeClaim:
+      claimName: flowise-home
+extraVolumeMounts:
+  - name: flowise-home
+    mountPath: /home/node/.flowise
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 1Gi
+  limits:
+    memory: 2Gi
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false

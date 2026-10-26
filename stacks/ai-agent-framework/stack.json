@@ -1,0 +1,124 @@
+{
+  "slug": "ai-agent-framework",
+  "name": "AI Agent Framework",
+  "version": "2.0.0",
+  "category": "agent",
+  "icon": "Bot",
+  "maintainer": "AI Solutions Camp",
+  "shortDescription": "Visual builder for LLM agents based on Flowise, with local models through Ollama and PostgreSQL storage",
+  "description": "A self-hosted agent builder based on [Flowise](https://github.com/FlowiseAI/Flowise) 3.1. You design chatflows and agentflows in a drag-and-drop editor: agents that call tools, keep conversation memory and hand work to other agents. Every flow is also available over a REST API, protected by API keys.\n\nThe stack runs three containers: Flowise, [Ollama](https://ollama.com) for local models (`llama3.2:3b` by default, a small model that supports tool calling), and PostgreSQL as the Flowise database. Model providers with an API key (OpenAI, Anthropic, Mistral and others) can be added in the Flowise UI instead of or next to Ollama.\n\nSecure defaults: every secret (database password, encryption key, token secrets) must be set before the first start, the owner account is created automatically from your `.env` so the instance cannot be claimed by the first visitor, and the ports are bound to `127.0.0.1`. Deploy with Docker Compose, Helm (HelmForge Flowise chart and the otwld Ollama chart), Terraform with the Docker provider, or Terraform on a single AWS EC2 instance.",
+  "tags": [
+    "AI Agents",
+    "Flowise",
+    "Ollama",
+    "Tools",
+    "Multi-Agent",
+    "PostgreSQL"
+  ],
+  "requirements": [
+    "Docker Engine with Docker Compose v2",
+    "4 CPU cores and 8 GB RAM for the default 3B model on CPU (16 GB recommended)",
+    "About 25 GB free disk: the images are about 5 GB to download and about 13 GB unpacked, llama3.2:3b adds about 2 GB",
+    "Optional: NVIDIA GPU with the NVIDIA Container Toolkit (compose.gpu.yaml)"
+  ],
+  "envVariables": [
+    {
+      "name": "FLOWISE_PORT",
+      "default": "3000",
+      "required": false,
+      "description": "Host port of the Flowise UI and API (bound to 127.0.0.1)"
+    },
+    {
+      "name": "OLLAMA_PORT",
+      "default": "11434",
+      "required": false,
+      "description": "Host port of the Ollama API (bound to 127.0.0.1)"
+    },
+    {
+      "name": "FLOWISE_ADMIN_NAME",
+      "default": "Admin",
+      "required": false,
+      "description": "Display name of the owner account"
+    },
+    {
+      "name": "FLOWISE_ADMIN_EMAIL",
+      "default": "",
+      "required": true,
+      "description": "Login email of the owner account, created on first start"
+    },
+    {
+      "name": "FLOWISE_ADMIN_PASSWORD",
+      "default": "",
+      "required": true,
+      "description": "Owner password: 8-128 characters with upper and lower case, a digit and a special character"
+    },
+    {
+      "name": "FLOWISE_SECRETKEY_OVERWRITE",
+      "default": "",
+      "required": true,
+      "description": "Encryption key for stored credentials (openssl rand -hex 32). Keep it stable"
+    },
+    {
+      "name": "JWT_AUTH_TOKEN_SECRET",
+      "default": "",
+      "required": true,
+      "description": "Signs login tokens (openssl rand -hex 32)"
+    },
+    {
+      "name": "JWT_REFRESH_TOKEN_SECRET",
+      "default": "",
+      "required": true,
+      "description": "Signs refresh tokens (openssl rand -hex 32)"
+    },
+    {
+      "name": "EXPRESS_SESSION_SECRET",
+      "default": "",
+      "required": true,
+      "description": "Signs session cookies (openssl rand -hex 32)"
+    },
+    {
+      "name": "TOKEN_HASH_SECRET",
+      "default": "",
+      "required": true,
+      "description": "Hashes password-reset and invite tokens (openssl rand -hex 32)"
+    },
+    {
+      "name": "POSTGRES_PASSWORD",
+      "default": "",
+      "required": true,
+      "description": "Password of the flowise PostgreSQL user (openssl rand -hex 32)"
+    },
+    {
+      "name": "APP_URL",
+      "default": "http://localhost:3000",
+      "required": false,
+      "description": "Public URL of Flowise; an https:// URL turns on secure cookies"
+    },
+    {
+      "name": "LOG_LEVEL",
+      "default": "info",
+      "required": false,
+      "description": "error, warn, info, verbose or debug"
+    },
+    {
+      "name": "DISABLE_FLOWISE_TELEMETRY",
+      "default": "true",
+      "required": false,
+      "description": "Set to false to send anonymous usage data to FlowiseAI"
+    },
+    {
+      "name": "OLLAMA_MODEL",
+      "default": "llama3.2:3b",
+      "required": false,
+      "description": "Model pulled on start; use one with tool calling for agents"
+    },
+    {
+      "name": "OLLAMA_KEEP_ALIVE",
+      "default": "5m",
+      "required": false,
+      "description": "How long a model stays loaded after the last request"
+    }
+  ],
+  "githubChartPath": null,
+  "demoUrl": null
+}

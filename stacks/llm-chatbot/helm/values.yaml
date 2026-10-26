@@ -1,0 +1,99 @@
+# Values for the official Open WebUI chart (open-webui/open-webui 17.0.0, https://helm.openwebui.com)
+# with its bundled Ollama subchart (otwld/ollama-helm). Used by install.sh.
+# Full reference: helm show values open-webui/open-webui --version 17.0.0
+
+# Open WebUI 0.12.4 (the chart's default appVersion is 0.12.0).
+image:
+  repository: ghcr.io/open-webui/open-webui
+  tag: "0.12.4"
+  useSlim: false
+
+replicaCount: 1
+
+# SQLite database, uploads and the embedding model cache live here.
+persistence:
+  enabled: true
+  size: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClass: ""
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    memory: 4Gi
+
+extraEnvVars:
+  # Session signing key from a Secret you create first (see install.sh). Without it, Open WebUI
+  # generates a key inside the container, and every restart logs all users out.
+  - name: WEBUI_SECRET_KEY
+    valueFrom:
+      secretKeyRef:
+        name: open-webui-secret
+        key: webui-secret-key
+  # The first account becomes the admin. After creating it, turn sign-up off in
+  # Admin Panel > Settings > General (this variable is only read on the first start).
+  - name: ENABLE_SIGNUP
+    value: "true"
+  - name: DEFAULT_USER_ROLE
+    value: "pending"
+  - name: DEFAULT_MODELS
+    value: "llama3.2"
+
+# Local models only. The chart's default would point at api.openai.com with a placeholder key.
+enableOpenaiApi: false
+
+# Pipelines is not part of this stack.
+pipelines:
+  enabled: false
+
+# Single replica: in-memory websocket manager, no Redis needed.
+websocket:
+  enabled: true
+  manager: ""
+  redis:
+    enabled: false
+
+# Expose through your ingress controller. Keep disabled until you have TLS.
+ingress:
+  enabled: false
+  class: ""
+  host: "chat.example.com"
+  tls: false
+  existingSecret: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Bundled Ollama subchart. Values below go to the otwld/ollama chart.
+ollama:
+  enabled: true
+  image:
+    repository: ollama/ollama
+    tag: "0.40.11"
+  ollama:
+    # Pulled when the Ollama pod starts (skipped if already on the volume).
+    models:
+      pull:
+        - llama3.2
+    gpu:
+      # Set to true on nodes with NVIDIA GPUs and the NVIDIA device plugin.
+      enabled: false
+      type: nvidia
+      number: 1
+  persistentVolume:
+    enabled: true
+    size: 30Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      memory: 8Gi
+  service:
+    type: ClusterIP
+    port: 11434

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: text-embeddings-inference
+description: Hugging Face Text Embeddings Inference (TEI) as an embedding or reranker API
+type: application
+version: 0.1.0
+appVersion: "1.9.4"
+home: https://github.com/aisolutionscamp/stacks/tree/main/stacks/embedding-service
+sources:
+  - https://github.com/huggingface/text-embeddings-inference
+maintainers:
+  - name: AI Solutions Camp

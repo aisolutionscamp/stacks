@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker-compose
+    directories: ["/stacks/*"]
+    schedule:
+      interval: weekly
+  - package-ecosystem: terraform
+    directories: ["/stacks/*/terraform/local", "/stacks/*/terraform/aws"]
+    schedule:
+      interval: weekly

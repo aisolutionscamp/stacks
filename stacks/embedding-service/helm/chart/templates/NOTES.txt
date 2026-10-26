@@ -1,0 +1,11 @@
+Text Embeddings Inference is starting with model {{ .Values.model.id }}.
+The first start downloads the model; watch it with:
+  kubectl -n {{ .Release.Namespace }} logs -f deploy/{{ include "tei.fullname" . }}
+
+Test it:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "tei.fullname" . }} 8080:{{ .Values.service.port }}
+  curl http://127.0.0.1:8080/embed -H 'Content-Type: application/json' \
+{{- if .Values.apiKey.existingSecret }}
+    -H "Authorization: Bearer $API_KEY" \
+{{- end }}
+    -d '{"inputs":"Hello world"}'

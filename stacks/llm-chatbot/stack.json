@@ -1,0 +1,112 @@
+{
+  "slug": "llm-chatbot",
+  "name": "LLM Chatbot",
+  "version": "2.0.0",
+  "category": "chatbot",
+  "icon": "MessageSquare",
+  "maintainer": "AI Solutions Camp",
+  "shortDescription": "Private chat UI (Open WebUI) for local models served by Ollama",
+  "description": "Self-hosted chat interface: [Open WebUI](https://github.com/open-webui/open-webui) 0.12.4 on top of [Ollama](https://github.com/ollama/ollama) 0.40.11, which runs open models such as Llama 3.2 on your own hardware. Chats, accounts and models stay on your machine.\n\nOn the first start a one-shot job pulls a default model (`llama3.2`, about 2 GB), so the chat works right away. Open WebUI provides user accounts with roles, chat history, model switching and streaming answers. The first account becomes the admin; new sign-ups need approval and can be turned off.\n\nRuns on CPU; an NVIDIA GPU is optional and speeds up answers a lot. Both services listen on 127.0.0.1 only and the session secret has no default. Deploy with Docker Compose, Helm (official Open WebUI chart with bundled Ollama), Terraform with the Docker provider, or Terraform on one AWS EC2 instance.",
+  "tags": [
+    "Chatbot",
+    "LLM",
+    "Ollama",
+    "Open WebUI",
+    "Self-hosted",
+    "Local Models"
+  ],
+  "requirements": [
+    "Docker Engine with the Compose plugin (docker compose)",
+    "About 8 GB RAM for 1B-3B models such as llama3.2, about 16 GB for 7B-8B models",
+    "About 15 GB disk for the two images, plus the models (llama3.2: about 2 GB)",
+    "Optional: NVIDIA GPU with the NVIDIA Container Toolkit for faster answers"
+  ],
+  "envVariables": [
+    {
+      "name": "WEBUI_SECRET_KEY",
+      "default": "",
+      "required": true,
+      "description": "Signs Open WebUI login sessions. Generate with openssl rand -hex 32. Changing it logs out all users."
+    },
+    {
+      "name": "DEFAULT_MODEL",
+      "default": "llama3.2",
+      "required": false,
+      "description": "Ollama model pulled on start by the model-pull job and preselected in Open WebUI. Empty skips the download."
+    },
+    {
+      "name": "WEBUI_PORT",
+      "default": "3000",
+      "required": false,
+      "description": "Host port for Open WebUI, bound to 127.0.0.1."
+    },
+    {
+      "name": "WEBUI_URL",
+      "default": "http://localhost:${WEBUI_PORT}",
+      "required": false,
+      "description": "Public URL of the UI, used in links and OAuth callbacks."
+    },
+    {
+      "name": "WEBUI_NAME",
+      "default": "LLM Chatbot",
+      "required": false,
+      "description": "Name shown in the UI."
+    },
+    {
+      "name": "ENABLE_SIGNUP",
+      "default": "true",
+      "required": false,
+      "description": "Allow new accounts. The first account becomes the admin; turn sign-up off afterwards. Only read on the first start, then managed in the admin panel."
+    },
+    {
+      "name": "DEFAULT_USER_ROLE",
+      "default": "pending",
+      "required": false,
+      "description": "Role for new accounts: pending (needs admin approval), user or admin."
+    },
+    {
+      "name": "ENABLE_OPENAI_API",
+      "default": "false",
+      "required": false,
+      "description": "Also allow OpenAI-compatible APIs (keys are added in the admin panel)."
+    },
+    {
+      "name": "OLLAMA_PORT",
+      "default": "11434",
+      "required": false,
+      "description": "Host port for the Ollama API, bound to 127.0.0.1. The API has no authentication."
+    },
+    {
+      "name": "OLLAMA_KEEP_ALIVE",
+      "default": "5m",
+      "required": false,
+      "description": "How long a model stays loaded after the last request."
+    },
+    {
+      "name": "OLLAMA_NUM_PARALLEL",
+      "default": "1",
+      "required": false,
+      "description": "Requests processed in parallel per model."
+    },
+    {
+      "name": "OLLAMA_MAX_LOADED_MODELS",
+      "default": "1",
+      "required": false,
+      "description": "Models kept in memory at the same time."
+    },
+    {
+      "name": "OLLAMA_VERSION",
+      "default": "0.40.11",
+      "required": false,
+      "description": "ollama/ollama image tag."
+    },
+    {
+      "name": "OPEN_WEBUI_VERSION",
+      "default": "0.12.4",
+      "required": false,
+      "description": "ghcr.io/open-webui/open-webui image tag."
+    }
+  ],
+  "githubChartPath": null,
+  "demoUrl": null
+}

@@ -1,0 +1,74 @@
+# Values for the rag-stack chart 1.0.0 (Qdrant + Ollama + rag-api).
+# All options: https://github.com/aisolutionscamp/charts/blob/main/charts/rag-stack/values.yaml
+
+ragApi:
+  image:
+    tag: "1.0.0"
+  auth:
+    # API key on /ingest, /query and /documents. With existingSecret empty the
+    # chart generates a key and keeps it on upgrades. To bring your own:
+    #   kubectl -n rag create secret generic rag-api-key --from-literal=api-key="$(openssl rand -hex 32)"
+    enabled: true
+    existingSecret: ""
+  config:
+    embedModel: "nomic-embed-text:v1.5"
+    chatModel: "llama3.2:3b"
+    collection: documents
+    chunkSize: 1000
+    chunkOverlap: 200
+    topK: 4
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+# Expose rag-api outside the cluster. Use TLS: clients send the API key in a header.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: rag.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Only rag-api may reach Qdrant and Ollama (needs a CNI that enforces NetworkPolicies).
+networkPolicy:
+  enabled: true
+
+qdrant:
+  image:
+    tag: v1.20.0
+  # Generates an API key and stores it in the Secret rag-qdrant-apikey.
+  apiKey: true
+  persistence:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+
+ollama:
+  image:
+    tag: "0.40.11"
+  ollama:
+    gpu:
+      # Set true on nodes with the NVIDIA device plugin.
+      enabled: false
+      type: nvidia
+      number: 1
+  persistentVolume:
+    enabled: true
+    size: 30Gi
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      memory: 8Gi

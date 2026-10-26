@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1" # weekly: catches upstream image and chart changes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stacks:
+    name: ${{ matrix.stack }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [rag-pipeline, llm-chatbot, embedding-service, ai-agent-framework]
+    defaults:
+      run:
+        working-directory: stacks/${{ matrix.stack }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compose config
+        run: |
+          # .env.ci holds throwaway test values (secrets generated here).
+          if [ -f .env.ci ]; then cp .env.ci .env; else cp .env.example .env; fi
+          if [ -x ci-secrets.sh ]; then ./ci-secrets.sh >> .env; fi
+          docker compose config --quiet
+
+      - name: Compose up and smoke test
+        run: |
+          docker compose up -d --build --wait --wait-timeout 600
+          ./smoke-test.sh
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - name: Compose down
+        if: always()
+        run: docker compose down -v
+
+      - name: Helm
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w --entrypoint sh alpine/helm:3.19.0 -c 'sh helm/test.sh'
+
+      - name: Terraform fmt + validate
+        run: |
+          for d in terraform/local terraform/aws; do
+            docker run --rm -v "$PWD/$d:/w" -w /w hashicorp/terraform:1.13 fmt -check -diff
+            docker run --rm -v "$PWD/$d:/w" -w /w hashicorp/terraform:1.13 init -backend=false -input=false
+            docker run --rm -v "$PWD/$d:/w" -w /w hashicorp/terraform:1.13 validate
+          done
+
+  export:
+    name: Catalog export
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: node scripts/export.mjs /tmp/export
+
+  notify:
+    name: Issue on scheduled failure
+    needs: [stacks, export]
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing=$(gh issue list --state open --search "Scheduled CI in:title" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then gh issue comment "$existing" --body "Failed again: $RUN_URL"
+          else gh issue create --title "Scheduled CI failed" --body "The weekly stack test failed: $RUN_URL"; fi

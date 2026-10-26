@@ -1,0 +1,137 @@
+{
+  "slug": "rag-pipeline",
+  "name": "RAG Pipeline",
+  "version": "2.0.0",
+  "category": "rag",
+  "icon": "Database",
+  "maintainer": "AI Solutions Camp",
+  "shortDescription": "Ask questions about your own documents: Qdrant, Ollama and a small ingest and query API",
+  "description": "A complete retrieval-augmented generation (RAG) stack that runs on your own machine or server. You upload text, Markdown or PDF files, and ask questions about them over HTTP. Answers come with the passages they are based on.\n\nThe stack has three services: **Qdrant** stores the document chunks as vectors, **Ollama** runs the embedding model (`nomic-embed-text` by default) and the chat model (`llama3.2:3b` by default), and **rag-api**, a small FastAPI service, splits documents into overlapping chunks, stores them in Qdrant and answers questions from the best-matching chunks (`POST /ingest`, `POST /query`, `GET /health`).\n\nEverything stays local: no external AI API is called. Qdrant requires an API key, rag-api can require one, and all ports are published on 127.0.0.1 only. An optional override runs Ollama on an NVIDIA GPU.",
+  "tags": [
+    "RAG",
+    "Qdrant",
+    "Ollama",
+    "Vector Database",
+    "Embeddings",
+    "Self-hosted",
+    "FastAPI"
+  ],
+  "requirements": [
+    "Docker Engine 25 or newer with the Docker Compose plugin",
+    "4 CPU cores and about 8 GB RAM for the default models (llama3.2:3b, nomic-embed-text); larger chat models need more",
+    "About 15 GB free disk: images about 9 GB (mostly Ollama), default models about 2.3 GB, plus your documents",
+    "Optional: NVIDIA GPU with the NVIDIA Container Toolkit for faster answers"
+  ],
+  "envVariables": [
+    {
+      "name": "QDRANT_API_KEY",
+      "default": "",
+      "required": true,
+      "description": "API key for Qdrant, used by rag-api and the Qdrant dashboard. Generate with openssl rand -hex 32."
+    },
+    {
+      "name": "RAG_API_KEY",
+      "default": "",
+      "required": false,
+      "description": "API key clients send as X-API-Key or Bearer token. Empty disables authentication; set it for anything beyond local testing."
+    },
+    {
+      "name": "EMBED_MODEL",
+      "default": "nomic-embed-text:v1.5",
+      "required": false,
+      "description": "Ollama embedding model. Changing it needs a new QDRANT_COLLECTION because the vector size changes."
+    },
+    {
+      "name": "CHAT_MODEL",
+      "default": "llama3.2:3b",
+      "required": false,
+      "description": "Ollama chat model that writes the answers."
+    },
+    {
+      "name": "PULL_MODELS",
+      "default": "true",
+      "required": false,
+      "description": "Pull missing models into Ollama when rag-api starts."
+    },
+    {
+      "name": "OLLAMA_KEEP_ALIVE",
+      "default": "5m",
+      "required": false,
+      "description": "How long Ollama keeps a model loaded after a request."
+    },
+    {
+      "name": "QDRANT_COLLECTION",
+      "default": "documents",
+      "required": false,
+      "description": "Qdrant collection that stores the chunks."
+    },
+    {
+      "name": "CHUNK_SIZE",
+      "default": "1000",
+      "required": false,
+      "description": "Chunk size in characters."
+    },
+    {
+      "name": "CHUNK_OVERLAP",
+      "default": "200",
+      "required": false,
+      "description": "Overlap between neighbouring chunks in characters."
+    },
+    {
+      "name": "TOP_K",
+      "default": "4",
+      "required": false,
+      "description": "Number of chunks passed to the model per question."
+    },
+    {
+      "name": "MAX_UPLOAD_MB",
+      "default": "20",
+      "required": false,
+      "description": "Maximum size of one uploaded file or JSON request in MB."
+    },
+    {
+      "name": "LLM_TIMEOUT",
+      "default": "300",
+      "required": false,
+      "description": "Seconds to wait for Ollama; CPU inference can be slow."
+    },
+    {
+      "name": "LLM_TEMPERATURE",
+      "default": "0.1",
+      "required": false,
+      "description": "Sampling temperature for answers."
+    },
+    {
+      "name": "RAG_API_PORT",
+      "default": "8000",
+      "required": false,
+      "description": "Host port for rag-api."
+    },
+    {
+      "name": "RAG_API_BIND",
+      "default": "127.0.0.1",
+      "required": false,
+      "description": "Host address rag-api is published on. Use 0.0.0.0 only behind a firewall or TLS proxy."
+    },
+    {
+      "name": "QDRANT_PORT",
+      "default": "6333",
+      "required": false,
+      "description": "Host port for the Qdrant REST API and dashboard (127.0.0.1 only)."
+    },
+    {
+      "name": "OLLAMA_PORT",
+      "default": "11434",
+      "required": false,
+      "description": "Host port for Ollama (127.0.0.1 only, no authentication)."
+    },
+    {
+      "name": "RAG_API_VERSION",
+      "default": "1.0.0",
+      "required": false,
+      "description": "Tag of ghcr.io/aisolutionscamp/rag-api, also used for the local build."
+    }
+  ],
+  "githubChartPath": "rag-stack",
+  "demoUrl": null
+}

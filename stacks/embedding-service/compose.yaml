@@ -1,0 +1,70 @@
+# Embedding Service: Hugging Face Text Embeddings Inference (TEI)
+#   cp .env.example .env   # then edit it
+#   docker compose up -d --wait
+# Optional reranker:  COMPOSE_PROFILES=reranker docker compose up -d --wait
+# NVIDIA GPU:         docker compose -f compose.yaml -f compose.gpu.yaml up -d --wait
+
+x-tei: &tei
+  image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.4
+  restart: unless-stopped
+  # API_KEY and HF_TOKEN are optional. TEI treats an empty API_KEY as a key
+  # that never matches, so both are only exported when they are set.
+  entrypoint:
+    - /bin/sh
+    - -c
+    - >-
+      [ -n "$${TEI_API_KEY:-}" ] && export API_KEY="$$TEI_API_KEY";
+      [ -n "$${TEI_HF_TOKEN:-}" ] && export HF_TOKEN="$$TEI_HF_TOKEN";
+      unset TEI_API_KEY TEI_HF_TOKEN;
+      exec text-embeddings-router --json-output
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  volumes:
+    - models:/data
+  healthcheck:
+    # /health is public even when an API key is set. The server only starts
+    # listening after the model is downloaded and loaded.
+    test: ["CMD", "curl", "-fsS", "http://localhost:80/health"]
+    interval: 15s
+    timeout: 5s
+    retries: 3
+    start_period: 15m
+    start_interval: 5s
+
+services:
+  embeddings:
+    <<: *tei
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: "80"
+      MODEL_ID: ${EMBED_MODEL_ID:-BAAI/bge-base-en-v1.5}
+      REVISION: ${EMBED_MODEL_REVISION:-main}
+      MAX_CLIENT_BATCH_SIZE: ${MAX_CLIENT_BATCH_SIZE:-32}
+      AUTO_TRUNCATE: ${AUTO_TRUNCATE:-true}
+      TEI_HF_TOKEN: ${HF_TOKEN:-}
+      TEI_API_KEY: ${API_KEY:-}
+    ports:
+      - "127.0.0.1:${EMBED_PORT:-8080}:80"
+
+  reranker:
+    <<: *tei
+    profiles: ["reranker"]
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: "80"
+      MODEL_ID: ${RERANK_MODEL_ID:-BAAI/bge-reranker-base}
+      REVISION: ${RERANK_MODEL_REVISION:-main}
+      MAX_CLIENT_BATCH_SIZE: ${MAX_CLIENT_BATCH_SIZE:-32}
+      AUTO_TRUNCATE: ${AUTO_TRUNCATE:-true}
+      TEI_HF_TOKEN: ${HF_TOKEN:-}
+      TEI_API_KEY: ${API_KEY:-}
+    ports:
+      - "127.0.0.1:${RERANK_PORT:-8081}:80"
+
+volumes:
+  models:

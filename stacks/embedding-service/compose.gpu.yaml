@@ -1,0 +1,33 @@
+# NVIDIA GPU override. Needs the NVIDIA driver and the NVIDIA Container Toolkit
+# on the host.
+#   docker compose -f compose.yaml -f compose.gpu.yaml up -d --wait
+#
+# cuda-1.9.4 contains builds for Turing (T4), Ampere (A100, A10G, A40),
+# Ada Lovelace (L4, L40S), Hopper (H100) and Blackwell and picks one at start.
+# Its entrypoint script may run ldconfig, so the root filesystem stays writable.
+
+x-tei-gpu: &tei-gpu
+  image: ghcr.io/huggingface/text-embeddings-inference:cuda-1.9.4
+  read_only: false
+  entrypoint:
+    - /bin/sh
+    - -c
+    - >-
+      [ -n "$${TEI_API_KEY:-}" ] && export API_KEY="$$TEI_API_KEY";
+      [ -n "$${TEI_HF_TOKEN:-}" ] && export HF_TOKEN="$$TEI_HF_TOKEN";
+      unset TEI_API_KEY TEI_HF_TOKEN;
+      exec /entrypoint.sh --json-output
+  shm_size: 1gb
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+
+services:
+  embeddings:
+    <<: *tei-gpu
+  reranker:
+    <<: *tei-gpu

@@ -1,0 +1,118 @@
+# Default values for the text-embeddings-inference chart.
+
+image:
+  repository: ghcr.io/huggingface/text-embeddings-inference
+  # CPU image. For NVIDIA GPUs use cuda-1.9.4 and set resources.limits."nvidia.com/gpu".
+  tag: cpu-1.9.4
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+model:
+  # Hugging Face model id. A reranker model (e.g. BAAI/bge-reranker-base) works too.
+  id: BAAI/bge-base-en-v1.5
+  # Branch, tag or commit hash. Pin a commit hash for reproducible deployments.
+  revision: main
+
+# Extra TEI settings as environment variables
+# (see text-embeddings-router --help), e.g. MAX_CLIENT_BATCH_SIZE: "32".
+extraEnv:
+  MAX_CLIENT_BATCH_SIZE: "32"
+  AUTO_TRUNCATE: "true"
+
+# Optional API key. Every request except /health and /metrics then needs
+# "Authorization: Bearer <key>". Reference an existing Secret.
+apiKey:
+  existingSecret: ""
+  secretKey: api-key
+
+# Optional Hugging Face token for gated or private models (existing Secret).
+hfToken:
+  existingSecret: ""
+  secretKey: token
+
+replicaCount: 1
+
+# Model cache. With a ReadWriteOnce volume keep replicaCount at 1 (the
+# Deployment uses the Recreate strategy then). For several replicas use a
+# ReadWriteMany storage class or disable persistence (each pod downloads the model).
+persistence:
+  enabled: true
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  existingClaim: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: embeddings.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    memory: 4Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+# The server only listens after the model is downloaded and loaded.
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 10
+  failureThreshold: 90
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 10
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 20
+  failureThreshold: 3
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+serviceAccount:
+  create: false
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

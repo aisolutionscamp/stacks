@@ -1,0 +1,9 @@
+.env
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+node_modules/
+__pycache__/
+.venv/

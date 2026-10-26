@@ -1,0 +1,29 @@
+# Values for the Ollama chart (otwld/ollama 1.92.0, Ollama 0.40.11).
+image:
+  repository: ollama/ollama
+  tag: "0.40.11"
+
+ollama:
+  port: 11434
+  gpu:
+    # Set to true (and type/number) on nodes with an NVIDIA or AMD GPU.
+    enabled: false
+  models:
+    # Pulled when the pod starts. Agents need a model with tool calling.
+    pull:
+      - llama3.2:3b
+
+persistentVolume:
+  enabled: true
+  size: 30Gi
+
+resources:
+  requests:
+    cpu: "1"
+    memory: 4Gi
+  limits:
+    memory: 8Gi
+
+service:
+  type: ClusterIP
+  port: 11434
