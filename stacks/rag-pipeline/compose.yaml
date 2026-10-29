@@ -45,7 +45,7 @@ services:
   rag-api:
     # Built from ./app; the same code is published as this image.
     build: ./app
-    image: ghcr.io/aisolutionscamp/rag-api:${RAG_API_VERSION:-1.0.0}
+    image: ghcr.io/aisolutionscamp/rag-api:${RAG_API_VERSION:-1.0.1}
     restart: unless-stopped
     depends_on:
       qdrant:

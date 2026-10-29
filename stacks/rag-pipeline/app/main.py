@@ -85,7 +85,15 @@ SYSTEM_PROMPT = (
 
 
 class UpstreamError(Exception):
-    """Raised when Ollama or Qdrant returns an error."""
+    """Raised when Ollama or Qdrant returns an error.
+
+    `public` is a fixed, safe status for /health; the message (which may contain
+    upstream responses or internal URLs) only goes to the log.
+    """
+
+    def __init__(self, message: str, public: str = "an upstream service returned an error, see the rag-api logs"):
+        super().__init__(message)
+        self.public = public
 
 
 class State:
@@ -147,7 +155,8 @@ async def ensure_model(name: str) -> None:
     if await model_present(name):
         return
     if not settings.pull_models:
-        raise UpstreamError(f"model {name} is not available in Ollama and PULL_MODELS is off")
+        raise UpstreamError(f"model {name} is not available in Ollama and PULL_MODELS is off",
+                            public="a configured model is missing in Ollama and PULL_MODELS is off")
     log.info("pulling model %s (first start only)", name)
     state.detail = f"pulling model {name}"
     await ollama("/api/pull", {"model": name, "stream": False}, timeout=3600)
@@ -170,7 +179,8 @@ async def ensure_collection() -> None:
             raise UpstreamError(
                 f"collection {settings.collection} has vector size {existing} but "
                 f"{settings.embed_model} produces {size}; use another QDRANT_COLLECTION "
-                "or re-create the collection")
+                "or re-create the collection",
+                public="the embedding model does not match the collection's vector size, see the rag-api logs")
     state.vector_size = size
 
 
@@ -186,12 +196,13 @@ async def prepare() -> None:
                      settings.embed_model, settings.chat_model, settings.collection)
             return
         except UpstreamError as exc:
-            state.detail = str(exc)
+            state.detail = exc.public
             # A dimension mismatch will not fix itself; keep reporting it.
             log.warning("not ready: %s", exc)
         except (httpx.HTTPError, KeyError, ValueError) as exc:
-            state.detail = f"waiting for dependencies: {exc.__class__.__name__}: {exc}"
-            log.info(state.detail)
+            # The exception text can contain internal URLs: log it, do not expose it.
+            state.detail = "waiting for Qdrant and Ollama"
+            log.info("waiting for dependencies: %s: %s", exc.__class__.__name__, exc)
         await asyncio.sleep(5)
 
 
@@ -285,7 +296,9 @@ app = FastAPI(title="rag-api", version=VERSION, lifespan=lifespan)
 
 @app.exception_handler(UpstreamError)
 async def upstream_error(_: Request, exc: UpstreamError):
-    return JSONResponse({"detail": str(exc)}, status_code=502)
+    # Upstream response bodies stay in the log; clients get the safe summary.
+    log.warning("upstream error: %s", exc)
+    return JSONResponse({"detail": exc.public}, status_code=502)
 
 
 @app.exception_handler(httpx.HTTPError)

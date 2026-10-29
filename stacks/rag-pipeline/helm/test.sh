@@ -8,7 +8,7 @@
 # RAG_STACK_CHART_DIR=/path/to/charts/rag-stack uses a local checkout instead.
 set -eu
 
-CHART_VERSION=1.0.0
+CHART_VERSION=1.0.1
 CHART_REPO=https://aisolutionscamp.github.io/charts
 CHARTS_GIT=${CHARTS_GIT:-https://github.com/aisolutionscamp/charts.git}
 VALUES=helm/values.yaml
@@ -18,7 +18,7 @@ trap 'rm -f "$OUT"' EXIT
 check_rendered() {
   grep -q 'kind: Deployment' "$OUT"
   grep -q 'name: rag-rag-api$' "$OUT"
-  grep -q 'image: "ghcr.io/aisolutionscamp/rag-api:1.0.0"' "$OUT"
+  grep -q 'image: "ghcr.io/aisolutionscamp/rag-api:1.0.1"' "$OUT"
   grep -q 'image: "docker.io/qdrant/qdrant:v1.20.0"' "$OUT"
   grep -q 'image: "ollama/ollama:0.40.11"' "$OUT"
   grep -q 'kind: NetworkPolicy' "$OUT"

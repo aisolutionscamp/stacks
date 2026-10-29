@@ -1,9 +1,9 @@
-# Values for the rag-stack chart 1.0.0 (Qdrant + Ollama + rag-api).
+# Values for the rag-stack chart 1.0.1 (Qdrant + Ollama + rag-api).
 # All options: https://github.com/aisolutionscamp/charts/blob/main/charts/rag-stack/values.yaml
 
 ragApi:
   image:
-    tag: "1.0.0"
+    tag: "1.0.1"
   auth:
     # API key on /ingest, /query and /documents. With existingSecret empty the
     # chart generates a key and keeps it on upgrades. To bring your own:

@@ -6,7 +6,7 @@ Ask questions about your own documents. You send text, Markdown or PDF files to 
 
 | Service | Image | Port (host) | What it does |
 |---|---|---|---|
-| `rag-api` | `ghcr.io/aisolutionscamp/rag-api:1.0.0` (built from [`app/`](app)) | `127.0.0.1:8000` | `POST /ingest`, `POST /query`, `DELETE /documents`, `GET /health` |
+| `rag-api` | `ghcr.io/aisolutionscamp/rag-api:1.0.1` (built from [`app/`](app)) | `127.0.0.1:8000` | `POST /ingest`, `POST /query`, `DELETE /documents`, `GET /health` |
 | `qdrant` | `qdrant/qdrant:v1.20.0` | `127.0.0.1:6333` | Vector store; REST API and dashboard at `/dashboard` |
 | `ollama` | `ollama/ollama:0.40.11` | `127.0.0.1:11434` | Runs the embedding model and the chat model |
 
@@ -106,8 +106,8 @@ Model upgrades: change `CHAT_MODEL` and restart rag-api; the new model is pulled
 | Symptom | Check |
 |---|---|
 | `up --wait` takes long on first start | rag-api is pulling the models: `docker compose logs -f rag-api` |
-| `/health` returns 503 with `vector size` in `detail` | The embedding model changed; use a new `QDRANT_COLLECTION` |
-| `/health` detail `waiting for dependencies` | `docker compose ps`; Qdrant or Ollama is not healthy |
+| `/health` returns 503, `detail` mentions the vector size | The embedding model changed; use a new `QDRANT_COLLECTION` (the log has the exact sizes) |
+| `/health` detail `waiting for Qdrant and Ollama` | `docker compose ps`; Qdrant or Ollama is not healthy (`docker compose logs rag-api` shows the error) |
 | `401 invalid or missing API key` | Send `X-API-Key` with the value of `RAG_API_KEY` |
 | `502` with `Qdrant ... returned 401` | rag-api and Qdrant use different `QDRANT_API_KEY` values; recreate both containers |
 | Query times out | CPU inference is slow for large models; use a smaller `CHAT_MODEL`, raise `LLM_TIMEOUT`, or use the GPU override |

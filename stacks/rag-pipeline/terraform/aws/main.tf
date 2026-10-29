@@ -125,7 +125,7 @@ variable "stacks_ref" {
 variable "rag_api_version" {
   description = "Tag of ghcr.io/aisolutionscamp/rag-api."
   type        = string
-  default     = "1.0.0"
+  default     = "1.0.1"
 }
 
 locals {

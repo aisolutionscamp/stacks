@@ -7,7 +7,7 @@ helm repo add aisolutionscamp https://aisolutionscamp.github.io/charts
 helm repo update aisolutionscamp
 
 helm upgrade --install rag aisolutionscamp/rag-stack \
-  --version 1.0.0 \
+  --version 1.0.1 \
   --namespace rag --create-namespace \
   -f values.yaml
 

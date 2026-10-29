@@ -127,7 +127,7 @@
     },
     {
       "name": "RAG_API_VERSION",
-      "default": "1.0.0",
+      "default": "1.0.1",
       "required": false,
       "description": "Tag of ghcr.io/aisolutionscamp/rag-api, also used for the local build."
     }

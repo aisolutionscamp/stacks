@@ -51,7 +51,7 @@ variable "name_prefix" {
 variable "rag_api_image" {
   description = "rag-api image. Published from stacks/rag-pipeline/app."
   type        = string
-  default     = "ghcr.io/aisolutionscamp/rag-api:1.0.0"
+  default     = "ghcr.io/aisolutionscamp/rag-api:1.0.1"
 }
 
 variable "build_rag_api" {
