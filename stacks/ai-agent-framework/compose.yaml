@@ -21,7 +21,7 @@ services:
     # No published port: only Flowise talks to the database.
 
   ollama:
-    image: ollama/ollama:0.40.11
+    image: ollama/ollama:0.40.15
     restart: unless-stopped
     environment:
       OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
@@ -38,7 +38,7 @@ services:
 
   # One-shot: downloads OLLAMA_MODEL into the ollama volume (skipped quickly if present).
   ollama-pull:
-    image: ollama/ollama:0.40.11
+    image: ollama/ollama:0.40.15
     restart: "no"
     depends_on:
       ollama:
